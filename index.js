@@ -29,7 +29,7 @@ let dbCollections = {}; // 🟢 All collections centralized
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
         console.log("Connected to MongoDB");
 
         const db = client.db('wwsDB');
@@ -96,7 +96,7 @@ async function run() {
         });
 
         // ===== Search GET Routes (All) =====
-        app.get('/api/search/courses', async (req, res) => {
+        app.get('/api/search/course', async (req, res) => {
             try {
                 const data = await dbCollections.coursesCollection.find().toArray();
                 res.send({ success: true, data });
@@ -132,23 +132,104 @@ async function run() {
             }
         });
 
-        // ===== Search POST Routes (Filters) =====
-        app.post('/api/search/courses', async (req, res) => {
-            try {
-                const { subject, studyLevel, destination } = req.body;
-                const query = {};
-                if (subject) query.subject = { $regex: subject, $options: 'i' };
-                if (studyLevel) query.studyLevel = studyLevel;
-                if (destination) query.destination = destination;
 
-                const data = await dbCollections.coursesCollection.find(query).toArray();
-                res.send({ success: true, data });
-            } catch (err) {
-                res.status(500).send({ success: false, message: 'Search failed' });
+        // ===== Scholarships Search POST Route (Nested Structure) =====
+        app.post('/api/search/scholarships', async (req, res) => {
+            try {
+                const { studyLevel, destination } = req.body;
+                console.log("Scholarships Request body:", req.body);
+
+                const query = {};
+                if (studyLevel) query["data.studyLevel"] = { $regex: studyLevel, $options: "i" };
+                if (destination) query["data.destination"] = { $regex: destination, $options: "i" };
+
+                const results = await dbCollections.scholarshipsCollection.aggregate([
+                    { $unwind: "$data" },             // আলাদা আলাদা scholarship এ ভাঙবে
+                    { $match: query },                // filter apply করবে
+                    { $replaceRoot: { newRoot: "$data" } } // শুধু scholarship object return করবে
+                ]).toArray();
+
+                res.json({ success: true, data: results });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ success: false, message: "Scholarship search failed" });
             }
         });
 
-        // 🎯 Similarly, you can create POST filters for scholarships, universities, events
+        // ===== Universities Search POST Route (Nested Structure) =====
+        app.post('/api/search/universities', async (req, res) => {
+            try {
+                const { universityName, destination } = req.body;
+                console.log("Universities Request body:", req.body);
+
+                const query = {};
+                if (universityName) query["data.universityName"] = { $regex: universityName, $options: "i" };
+                if (destination) query["data.destination"] = { $regex: destination, $options: "i" };
+
+                const results = await dbCollections.universitiesCollection.aggregate([
+                    { $unwind: "$data" },             // আলাদা আলাদা university এ ভাঙবে
+                    { $match: query },                // filter apply করবে
+                    { $replaceRoot: { newRoot: "$data" } } // শুধু university object return করবে
+                ]).toArray();
+
+                res.json({ success: true, data: results });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ success: false, message: "University search failed" });
+            }
+        });
+
+        // ===== Events Search POST Route (Nested Structure) =====
+        app.post('/api/search/events', async (req, res) => {
+            try {
+                const { city, month, destination } = req.body;
+                console.log("Events Request body:", req.body);
+
+                const query = {};
+                if (city) query["data.city"] = { $regex: city, $options: "i" };
+                if (month) query["data.month"] = { $regex: month, $options: "i" };
+                if (destination) query["data.destination"] = { $regex: destination, $options: "i" };
+
+                const results = await dbCollections.eventsCollection.aggregate([
+                    { $unwind: "$data" },             // আলাদা আলাদা event এ ভাঙবে
+                    { $match: query },                // filter apply করবে
+                    { $replaceRoot: { newRoot: "$data" } } // শুধু event object return করবে
+                ]).toArray();
+
+                res.json({ success: true, data: results });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ success: false, message: "Event search failed" });
+            }
+        });
+
+        // ===== Course Search POST Route (Nested Structure) =====
+app.post("/api/search/course", async (req, res) => {
+  try {
+    const { subject, studyLevel, destination } = req.body;
+    console.log("Request body:", req.body);
+
+    const query = {};
+    if (subject) query["data.subject"] = { $regex: subject, $options: "i" };
+    if (studyLevel) query["data.studyLevel"] = { $regex: studyLevel, $options: "i" };
+    if (destination) query["data.destination"] = { $regex: destination, $options: "i" };
+
+    const results = await dbCollections.coursesCollection.aggregate([
+      { $unwind: "$data" },             // আলাদা আলাদা course এ ভাঙবে
+      { $match: query },                // filter apply করবে
+      { $replaceRoot: { newRoot: "$data" } } // শুধু course object return করবে
+    ]).toArray();
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Course search failed" });
+  }
+});
+
+
+       
+
 
     } catch (err) {
         console.error(err);
