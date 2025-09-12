@@ -96,41 +96,114 @@ async function run() {
         });
 
         // ===== Search GET Routes (All) =====
+
         app.get('/api/search/courses', async (req, res) => {
             try {
-                const data = await dbCollections.coursesCollection.find().toArray();
-                res.send({ success: true, data });
+                const { studyLevel, destination, id } = req.query;
+
+                if (id) {
+                    if (!ObjectId.isValid(id)) {
+                        return res.status(400).send({ success: false, message: 'Invalid course ID' });
+                    }
+                    const course = await dbCollections.coursesCollection.findOne({ _id: new ObjectId(id) });
+                    if (!course) {
+                        return res.status(404).send({ success: false, message: 'Course not found' });
+                    }
+                    return res.send({ success: true, data: course });
+                }
+
+                let query = {};
+                if (studyLevel) query.studyLevel = studyLevel;
+                if (destination) query.destination = destination;
+
+                const courses = await dbCollections.coursesCollection.find(query).toArray();
+                res.send({ success: true, data: courses });
             } catch (err) {
+                console.error(err);
                 res.status(500).send({ success: false, message: 'Failed to fetch courses' });
             }
         });
 
+
+
         app.get('/api/search/scholarships', async (req, res) => {
             try {
-                const data = await dbCollections.scholarshipsCollection.find().toArray();
+                // Query params
+                const { studyLevel, destination } = req.query;
+
+                // Build MongoDB query object
+                let query = {};
+
+                if (studyLevel) {
+                    query.studyLevel = { $regex: new RegExp(studyLevel, 'i') }; // case-insensitive match
+                }
+
+                if (destination) {
+                    query.destination = { $regex: new RegExp(destination, 'i') }; // case-insensitive match
+                }
+
+                const data = await dbCollections.scholarshipsCollection.find(query).toArray();
                 res.send({ success: true, data });
             } catch (err) {
+                console.error(err);
                 res.status(500).send({ success: false, message: 'Failed to fetch scholarships' });
             }
         });
 
+
+        // University  done
         app.get('/api/search/universities', async (req, res) => {
             try {
-                const data = await dbCollections.universitiesCollection.find().toArray();
+                const { universityName, destination } = req.query;
+
+                let filter = {};
+
+                if (universityName) {
+                    // Remove extra spaces from query and use 'i' for case-insensitive
+                    const nameQuery = universityName.trim();
+                    filter.universityName = { $regex: nameQuery, $options: 'i' };
+                }
+
+                if (destination) {
+                    const destQuery = destination.trim();
+                    filter.destination = { $regex: destQuery, $options: 'i' };
+                }
+
+                const data = await dbCollections.universitiesCollection.find(filter).toArray();
                 res.send({ success: true, data });
             } catch (err) {
+                console.error(err);
                 res.status(500).send({ success: false, message: 'Failed to fetch universities' });
             }
         });
 
+
+        // Event done
         app.get('/api/search/events', async (req, res) => {
             try {
-                const data = await dbCollections.eventsCollection.find().toArray();
+                const { destination, month, city } = req.query;
+
+                // search শর্ত তৈরি
+                const filters = [];
+                if (destination) {
+                    filters.push({ destination: { $regex: destination, $options: 'i' } });
+                }
+                if (month) {
+                    filters.push({ month: { $regex: month, $options: 'i' } });
+                }
+                if (city) {
+                    filters.push({ city: { $regex: city, $options: 'i' } });
+                }
+
+                const query = filters.length > 0 ? { $or: filters } : {};
+
+                const data = await dbCollections.eventsCollection.find(query).toArray();
                 res.send({ success: true, data });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch events' });
             }
         });
+
 
         // ===== Search POST Routes (Filters) =====
         app.post('/api/search/courses', async (req, res) => {
