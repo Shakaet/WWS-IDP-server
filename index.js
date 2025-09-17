@@ -89,6 +89,35 @@ async function run() {
                 res.status(500).send({ message: 'Failed to submit enquiry' });
             }
         });
+
+
+        app.get("/api/course",async(req,res)=>{
+            const data = await dbCollections.coursesCollection.find().toArray();
+                res.send(data);
+
+
+        })
+
+        app.get("/api/scholarships",async(req,res)=>{
+            const data = await dbCollections.scholarshipsCollection.find().toArray();
+                res.send(data);
+
+
+        })
+
+        app.get("/api/universities",async(req,res)=>{
+            const data = await dbCollections.universitiesCollection.find().toArray();
+                res.send(data);
+
+
+        })
+
+        app.get("/api/events",async(req,res)=>{
+            const data = await dbCollections.eventsCollection.find().toArray();
+                res.send(data);
+
+
+        })
         
         // ===== Search GET Routes (All) =====
         app.get('/api/search/course', async (req, res) => {
