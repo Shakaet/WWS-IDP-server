@@ -40,6 +40,7 @@ async function run() {
             scholarshipsCollection: db.collection('scholarships'),
             universitiesCollection: db.collection('universities'),
             eventsCollection: db.collection('events'),
+            collaborateCollection: db.collection('collaborate'),
         };
         
         // Test connection
@@ -89,6 +90,8 @@ async function run() {
                 res.status(500).send({ message: 'Failed to submit enquiry' });
             }
         });
+
+      
 
 
         app.get("/api/course",async(req,res)=>{
@@ -253,6 +256,29 @@ async function run() {
                 res.status(500).json({ success: false, message: "Course search failed" });
             }
         });
+
+         app.get('/collaborate', async (req, res) => {
+            try {
+                const data = await dbCollections.collaborateCollection.find().toArray();
+                res.send(data);
+            } catch (err) {
+                res.status(500).send({ success: false, message: 'Failed to fetch universities' });
+            }
+        });
+
+          app.post('/collaborate', async (req, res) => {
+            try {
+                const enquiry = req.body;
+                // console.log(enquiry)
+                if (!enquiry) return res.status(400).send({ message: 'No data provided' });
+                const result = await dbCollections.collaborateCollection.insertOne(enquiry);
+                res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to submit enquiry' });
+            }
+        });
+
+
     } catch (err) {
         console.error(err);
     }
