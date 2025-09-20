@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import cookieParser from 'cookie-parser';
 
 dotenv.config();
@@ -131,6 +131,17 @@ async function run() {
                 res.status(500).send({ success: false, message: 'Failed to fetch courses' });
             }
         });
+
+        app.get("/api/scholarship/:id",async(req,res)=>{
+
+            let id=req.params.id
+
+            let query={_id:new ObjectId(id)}
+
+            let result=await dbCollections.scholarshipsCollection.findOne(query)
+
+            res.send(result)
+        })
         
         app.get('/api/search/scholarships', async (req, res) => {
             try {
@@ -149,6 +160,17 @@ async function run() {
                 res.status(500).send({ success: false, message: 'Failed to fetch universities' });
             }
         });
+
+        app.get("/api/event/:id",async(req,res)=>{
+
+            let id=req.params.id
+
+            let query={_id:new ObjectId(id)}
+
+            let result=await dbCollections.eventsCollection.findOne(query)
+
+            res.send(result)
+        })
         
         app.get('/api/search/events', async (req, res) => {
             try {
@@ -182,6 +204,20 @@ async function run() {
                 res.status(500).json({ success: false, message: "Scholarship search failed" });
             }
         });
+
+
+
+        
+        app.get("/api/university/:id",async(req,res)=>{
+
+            let id=req.params.id
+
+            let query={_id:new ObjectId(id)}
+
+            let result=await dbCollections.universitiesCollection.findOne(query)
+
+            res.send(result)
+        })
         
         // ===== Universities Search POST Route (Fixed for flat structure) =====
         app.post('/api/search/universities', async (req, res) => {
@@ -231,6 +267,18 @@ async function run() {
                 res.status(500).json({ success: false, message: "Event search failed" });
             }
         });
+
+
+        app.get("/api/course/:id",async(req,res)=>{
+
+            let id=req.params.id
+
+            let query={_id:new ObjectId(id)}
+
+            let result=await dbCollections.coursesCollection.findOne(query)
+
+            res.send(result)
+        })
         
         // ===== Course Search POST Route (Fixed for flat structure) =====
         app.post("/api/search/course", async (req, res) => {
