@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import nodemailer from "nodemailer";
 import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import cookieParser from 'cookie-parser';
 
@@ -15,6 +16,16 @@ app.use(cors({
     origin: ['http://localhost:5173'],
     credentials: true
 }));
+
+// Email transporter (Gmail Example)
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,   // তোমার Gmail
+    pass: process.env.EMAIL_PASS    // App Password (normal password নয়)
+  }
+});
+
 
 // MongoDB client
 const client = new MongoClient(process.env.MONGO_DB_URI, {
@@ -316,11 +327,22 @@ async function run() {
 
           app.post('/collaborate', async (req, res) => {
             try {
+                let email="abdshakaet@gmail.com"
                 const enquiry = req.body;
                 // console.log(enquiry)
                 if (!enquiry) return res.status(400).send({ message: 'No data provided' });
                 const result = await dbCollections.collaborateCollection.insertOne(enquiry);
                 res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
+                 // 2. Email পাঠাও
+                    const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: email,   // ইউজারের original email
+                    subject: "Your Post has been Submitted",
+                    text: `${enquiry.email}, your post has been submitted successfully. We will contact you soon!`
+                    };
+
+               await transporter.sendMail(mailOptions);
+                
             } catch (err) {
                 res.status(500).send({ message: 'Failed to submit enquiry' });
             }
