@@ -334,12 +334,35 @@ async function run() {
                 const result = await dbCollections.collaborateCollection.insertOne(enquiry);
                 res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
                  // 2. Email পাঠাও
-                    const mailOptions = {
+                    // const mailOptions = {
+                    // from: process.env.EMAIL_USER,
+                    // to: email,   // ইউজারের original email
+                    // subject: "Your Post has been Submitted",
+                    // text: `${enquiry.email}, your post has been submitted successfully. We will contact you soon!`
+                    // };
+
+                   const mailOptions = {
                     from: process.env.EMAIL_USER,
-                    to: email,   // ইউজারের original email
-                    subject: "Your Post has been Submitted",
-                    text: `${enquiry.email}, your post has been submitted successfully. We will contact you soon!`
+                    to: email,   // তোমার ইমেইল, যেটাতে message যাবে
+                    subject: "New Post Submitted by User",
+                    text: `
+                    Hi Abdulla Al Shakaet,
+
+                    A new post has been submitted by a user. Here are the details:
+
+                    ----------------------------------------
+                    Name: ${enquiry.name}
+                    Email: ${enquiry.email}
+                    Message: ${enquiry.message}
+                    ----------------------------------------
+
+                    Please follow up with the user as needed.
+
+                    Thank you,
+                    World Wise Scholar Team
+                    `
                     };
+
 
                await transporter.sendMail(mailOptions);
                 
