@@ -67,6 +67,70 @@ async function run() {
                 res.status(500).send({ message: "Failed to fetch users." });
             }
         });
+
+        app.get("/getUser/:email",async(req,res)=>{
+
+            let email=req.params.email
+            
+            let query={email:email}
+            let result=await dbCollections.usersCollection.findOne(query)
+
+            if(!result){
+                return res.send({message:"No user found"})
+            }
+            let user=false
+            if(result.role==="user"){
+                user=true
+            }
+
+            res.send({user})
+
+
+
+        })
+
+         app.get("/getAdmin/:email",async(req,res)=>{
+
+            let email=req.params.email
+            
+            let query={email:email}
+            let result=await dbCollections.usersCollection.findOne(query)
+
+            if(!result){
+                return res.send({message:"No user found"})
+            }
+            let admin=false
+            if(result.role==="admin"){
+                admin=true
+            }
+
+            res.send({admin})
+
+
+
+        })
+
+         app.get("/getAmbassador/:email",async(req,res)=>{
+
+            let email=req.params.email
+            
+            let query={email:email}
+            let result=await dbCollections.usersCollection.findOne(query)
+
+            if(!result){
+                return res.send({message:"No user found"})
+            }
+            let ambassador=false
+            if(result.role==="ambassador"){
+                ambassador=true
+            }
+
+            res.send({ambassador})
+
+
+
+        })
+
         
         app.post('/post-users', async (req, res) => {
             try {
