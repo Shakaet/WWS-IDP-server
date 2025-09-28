@@ -154,6 +154,53 @@ async function run() {
                 res.status(500).send({ message: 'Failed to fetch enquiries' });
             }
         });
+
+
+        app.patch("/help-from-wws/:id",async(req,res)=>{
+
+            let id=req.params.id
+            let status=req.body.status
+
+            let query={_id:new ObjectId(id)}
+
+            let updatedDoc={
+                $set:{
+                    status:status
+                }
+            }
+
+            let result=await dbCollections.helpCollection.updateOne(query,updatedDoc)
+
+            res.send(result)    
+        });
+
+
+         app.get('/help-from-wws/:userEmail', async (req, res) => {
+            try {
+
+                let userEmail=req.params.userEmail
+
+                let query={userEmail}
+                const result = await dbCollections.helpCollection.find(query).toArray();
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to fetch enquiries' });
+            }
+        });
+
+
+        app.delete('/help-from-wws/:id', async (req, res) => {
+            try {
+                let id=req.params.id
+
+                let query={_id:new ObjectId(id)}
+                
+                const result = await dbCollections.helpCollection.deleteOne(query);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to delete enquiry' });
+            }
+        });
         
         app.post('/help-from-wws', async (req, res) => {
             try {
@@ -246,6 +293,9 @@ async function run() {
 
             res.send(result)
         })
+
+
+        
         
         app.get('/api/search/events', async (req, res) => {
             try {
