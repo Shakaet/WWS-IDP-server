@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import cookieParser from 'cookie-parser';
 
+
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -258,7 +259,13 @@ async function run() {
 
             let id=req.params.id
 
-            let query={_id:new ObjectId(id)}
+                   // OR query বানানো হচ্ছে
+                const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+                };
 
             let result=await dbCollections.scholarshipsCollection.findOne(query)
 
@@ -286,10 +293,17 @@ async function run() {
         app.get("/api/event/:id",async(req,res)=>{
 
             let id=req.params.id
+            console.log(id)
 
-            let query={_id:new ObjectId(id)}
-
+                        // OR query বানানো হচ্ছে
+                const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+                };
             let result=await dbCollections.eventsCollection.findOne(query)
+            console.log(result)
 
             res.send(result)
         })
@@ -337,7 +351,13 @@ async function run() {
 
             let id=req.params.id
 
-            let query={_id:new ObjectId(id)}
+                  // OR query বানানো হচ্ছে
+                const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+                };
 
             let result=await dbCollections.universitiesCollection.findOne(query)
 
@@ -395,10 +415,18 @@ async function run() {
 
 
         app.get("/api/course/:id",async(req,res)=>{
+            
 
             let id=req.params.id
+            // console.log(id)
 
-            let query={_id:new ObjectId(id)}
+                  // OR query বানানো হচ্ছে
+                const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+                };
 
             let result=await dbCollections.coursesCollection.findOne(query)
 
@@ -482,6 +510,33 @@ async function run() {
                 
             } catch (err) {
                 res.status(500).send({ message: 'Failed to submit enquiry' });
+            }
+        });
+
+
+
+
+        app.post('/add-new-scholarship', async (req, res) => {
+            try {
+                const data = req.body;
+               
+                
+                const result = await dbCollections.scholarshipsCollection.insertOne(data);
+                res.status(201).send({ message: 'Scholarship added successfully', userId: result.insertedId });
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to add Scholarship' });
+            }
+        });
+
+         app.post('/add-new-university', async (req, res) => {
+            try {
+                const data = req.body;
+               
+                
+                const result = await dbCollections.universitiesCollection.insertOne(data);
+                res.status(201).send({ message: 'University added successfully', userId: result.insertedId });
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to add University' });
             }
         });
 
