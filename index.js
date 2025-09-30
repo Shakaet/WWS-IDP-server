@@ -528,6 +528,44 @@ async function run() {
             }
         });
 
+        // Normal Update Scholarship by id
+app.put('/api/scholarship/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+           // OR query বানানো হচ্ছে
+           const query = {
+            $or: [
+                { _id: id }, // string match
+                ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+            ].filter(Boolean) // null বাদ দেওয়ার জন্য
+            };
+
+        const updateDoc = {
+            $set: req.body   // সরাসরি যা আসবে body থেকে, সেটাই update হবে
+        };
+
+        const result = await dbCollections.scholarshipsCollection.updateOne(query, updateDoc);
+
+        res.send(result);   // result এর মধ্যে matchedCount, modifiedCount থাকবে
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Error updating scholarship' });
+    }
+});
+
+
+        // Delete a scholarship by id
+        app.delete('/api/scholarship/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
+                const result = await dbCollections.scholarshipsCollection.deleteOne(query);
+                res.send({ success: true, deletedCount: result.deletedCount });
+            } catch (err) {
+                res.status(500).send({ success: false, message: 'Failed to delete scholarship' });
+            }
+        });
+
          app.post('/add-new-university', async (req, res) => {
             try {
                 const data = req.body;
@@ -537,6 +575,38 @@ async function run() {
                 res.status(201).send({ message: 'University added successfully', userId: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to add University' });
+            }
+        });
+
+        // Normal Update University by id (pattern aligned with scholarship)
+        app.put('/api/university/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = {
+                    $or: [
+                        { _id: id },
+                        ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null
+                    ].filter(Boolean)
+                };
+
+                const updateDoc = { $set: req.body };
+                const result = await dbCollections.universitiesCollection.updateOne(query, updateDoc);
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: 'Error updating university' });
+            }
+        });
+
+        // Delete a university by id
+        app.delete('/api/university/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
+                const result = await dbCollections.universitiesCollection.deleteOne(query);
+                res.send({ success: true, deletedCount: result.deletedCount });
+            } catch (err) {
+                res.status(500).send({ success: false, message: 'Failed to delete university' });
             }
         });
 
