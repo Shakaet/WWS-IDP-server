@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(cookieParser());
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app"],
     credentials: true
 }));
 
@@ -66,6 +66,42 @@ async function run() {
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: "Failed to fetch users." });
+            }
+        });
+
+
+
+        app.get("/user/ambassador",async(req,res)=>{
+
+            try {
+                const result = await dbCollections.usersCollection.find({role:"ambassador"}).toArray();
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: "Failed to fetch users." });
+            }
+
+
+
+        })
+
+          app.patch('/user/ambassador/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const permissions = req.body;
+
+                console.log(id,permissions)
+                
+                const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
+                
+                const updateDoc = {
+                    $set: permissions
+                };
+                
+                const result = await dbCollections.usersCollection.updateOne(query, updateDoc);
+                res.send({ success: true, result });
+            } catch (err) {
+                console.error('Permission update error:', err);
+                res.status(500).send({ success: false, message: 'Failed to update permissions' });
             }
         });
 
