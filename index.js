@@ -607,7 +607,7 @@ async function run() {
             const data = await dbCollections.coursesCollection.find().toArray();
             res.send(data);
         })
- 
+
         // ================== Add New Course ==================
         app.post('/add-new-course', async (req, res) => {
             try {
@@ -709,6 +709,62 @@ async function run() {
         //         res.status(500).send({ success: false, message: 'Failed to fetch events' });
         //     }
         // });
+
+        // ================== Filter Courses ==================
+        app.post("/api/filter/course", async (req, res) => {
+            try {
+                const { destination, studyLevel, duration, subject, tuitionFeeMin, tuitionFeeMax } = req.body;
+                const query = {};
+
+                if (destination) query.destination = destination;
+                if (studyLevel) query.studyLevel = studyLevel;
+                if (duration) query.duration = duration;
+                if (subject) query.subject = subject;
+
+                // 🧮 Tuition Fee Range (convert "$18,000 - $28,000" -> numbers)
+                if (tuitionFeeMin !== undefined && tuitionFeeMax !== undefined) {
+                    query.$expr = {
+                        $and: [
+                            {
+                                $gte: [
+                                    {
+                                        $toInt: {
+                                            $replaceAll: {
+                                                input: { $arrayElemAt: [{ $split: ["$tuitionFee", " - "] }, 0] },
+                                                find: /\D/g,
+                                                replacement: "",
+                                            },
+                                        },
+                                    },
+                                    tuitionFeeMin,
+                                ],
+                            },
+                            {
+                                $lte: [
+                                    {
+                                        $toInt: {
+                                            $replaceAll: {
+                                                input: { $arrayElemAt: [{ $split: ["$tuitionFee", " - "] }, 1] },
+                                                find: /\D/g,
+                                                replacement: "",
+                                            },
+                                        },
+                                    },
+                                    tuitionFeeMax,
+                                ],
+                            },
+                        ],
+                    };
+                }
+
+                const filteredCourses = await dbCollections.coursesCollection.find(query).toArray();
+                res.json(filteredCourses);
+            } catch (error) {
+                console.error("Filter error:", error);
+                res.status(500).json({ message: "Error filtering courses" });
+            }
+        });
+
 
         // ================== Get Single Event by ID ==================
         app.get('/api/event/:id', async (req, res) => {
