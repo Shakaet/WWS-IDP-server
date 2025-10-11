@@ -65,10 +65,70 @@ async function run() {
                 const result = await dbCollections.usersCollection.find().toArray();
                 res.send(result);
             } catch (err) {
+                // console.log(err)
                 res.status(500).send({ message: "Failed to fetch users." });
             }
         });
 
+      app.patch("/users/:id", async (req, res) => {
+            try {
+                const userId = req.params.id;
+                const { role } = req.body;
+
+                if (!role) {
+                return res.status(400).json({ message: "Role is required" });
+                }
+
+                // ✅ ObjectId দিয়ে filter তৈরি করো
+                const filter = { _id: new ObjectId(userId) };
+
+                // ✅ Update operation
+                const updateDoc = {
+                $set: { role: role },
+                };
+
+                const result = await dbCollections.usersCollection.updateOne(filter, updateDoc);
+
+                if (result.matchedCount === 0) {
+                return res.status(404).json({ message: "User not found" });
+                }
+
+                res.status(200).json({
+                message: "User role updated successfully",
+                });
+            } catch (error) {
+                console.error("Error updating role:", error);
+                res.status(500).json({ message: "Internal server error" });
+            }
+            });
+
+
+
+    // ✅ Delete user by ID
+    app.delete("/users/:id", async (req, res) => {
+        try {
+            const userId = req.params.id;
+
+            // Validate ID
+            if (!ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+            }
+
+            // MongoDB filter
+            const filter = { _id: new ObjectId(userId) };
+
+            const result = await dbCollections.usersCollection.deleteOne(filter);
+
+            if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "User not found" });
+            }
+
+            res.status(200).json({ message: "User deleted successfully" });
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+        });
 
 
         app.get("/user/ambassador",async(req,res)=>{
@@ -105,22 +165,69 @@ async function run() {
             }
         });
 
-        app.get("/getUser/:email", async (req, res) => {
 
-            let email = req.params.email
 
-            let query = { email: email }
-            let result = await dbCollections.usersCollection.findOne(query)
 
-            if (!result) {
-                return res.send({ message: "No user found" })
+        app.get("/ambassador/access/:email",async(req,res)=>{
+
+
+
+            try {
+                const { email } = req.params;
+
+                if (!email) {
+                return res.status(400).json({ message: "Email is required" });
+                }
+
+                let User=dbCollections.usersCollection
+
+                const user = await User.findOne(
+                        { email },
+                        { projection: { role: 1, scholarships: 1, courses: 1, universities: 1, events: 1 } }
+                        );
+
+                if (!user) {
+                return res.status(404).json({ message: "User not found" });
+                }
+
+                // ✅ role ambassador না হলে access deny
+                if (user.role !== "ambassador") {
+                return res.status(403).json({ message: "Access denied: Not an ambassador" });
+                }
+
+                // ✅ শুধু true field গুলো পাঠানো হবে
+                const trueFields = {};
+                if (user.scholarships) trueFields.scholarships = true;
+                if (user.courses) trueFields.courses = true;
+                if (user.universities) trueFields.universities = true;
+                if (user.events) trueFields.events = true;
+
+                return res.json({
+                role: user.role,
+                access: trueFields,
+                });
+            } catch (error) {
+                res.status(500).json({ message: error.message });
             }
-            let user = false
-            if (result.role === "user") {
-                user = true
-            }
 
-            res.send({ user })
+        })
+
+                    app.get("/getUser/:email", async (req, res) => {
+
+                        let email = req.params.email
+
+                        let query = { email: email }
+                        let result = await dbCollections.usersCollection.findOne(query)
+
+                        if (!result) {
+                            return res.send({ message: "No user found" })
+                        }
+                        let user = false
+                        if (result.role === "user") {
+                            user = true
+                        }
+
+                        res.send({ user })
 
 
 
