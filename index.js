@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(cookieParser());
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app"],
     credentials: true
 }));
 
@@ -42,18 +42,42 @@ const client = new MongoClient(process.env.MONGO_DB_URI, {
     },
 });
 
-let dbCollections = {}; // All collections centralized
+// let dbCollections = {}; // All collections centralized
 
 async function run() {
     try {
-        console.log("Connected to MongoDB");
-        const db = client.db('wwsDB');
+        // await client.connect(); // ✅ Important for production
+        // console.log("Connected to MongoDB");
+        // const db = client.db('wwsDB');
+
+        
+        // Assign all collections
+
+
+        const database = client.db("wwsDB");
+    const usersCollection = database.collection("users");
+    const helpCollection=database.collection("help")
+    const scholarshipsCollection=database.collection("scholarships")
+    const universitiesCollection=database.collection("universities")
+    const eventsCollection=database.collection("events")
+    const coursesCollection = database.collection("courses");
+    const collaborateCollection = database.collection("collaborate");
+
+        // dbCollections = {
+        //   usersCollection: db.collection("users"),
+        //   helpCollection: db.collection("help"),
+        //   scholarshipsCollection: db.collection("scholarships"),
+        //   universitiesCollection: db.collection("universities"),
+        //   eventsCollection: db.collection("events"),
+        //   coursesCollection: db.collection("courses"),
+        //   collaborateCollection: db.collection("collaborate")
+        // };
         app.get("/getUser/:email", async (req, res) => {
 
             let email = req.params.email
 
             let query = { email: email }
-            let result = await dbCollections.usersCollection.findOne(query)
+            let result = await usersCollection.findOne(query)
 
             if (!result) {
                 return res.send({ message: "No user found" })
@@ -74,7 +98,7 @@ async function run() {
             let email = req.params.email
 
             let query = { email: email }
-            let result = await dbCollections.usersCollection.findOne(query)
+            let result = await usersCollection.findOne(query)
 
             if (!result) {
                 return res.send({ message: "No user found" })
@@ -95,7 +119,7 @@ async function run() {
             let email = req.params.email
 
             let query = { email: email }
-            let result = await dbCollections.usersCollection.findOne(query)
+            let result = await usersCollection.findOne(query)
 
             if (!result) {
                 return res.send({ message: "No user found" })
@@ -111,14 +135,91 @@ async function run() {
 
         })
 
+        // ===== Ambassador Permission Routes =====
+        app.get('/user/ambassador', async (req, res) => {
+            try {
+                const result = await usersCollection.find({ role: "ambassador" }).toArray();
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: 'Failed to fetch ambassadors' });
+            }
+        });
+
+         app.get("/ambassador/access/:email",async(req,res)=>{
+
+
+
+            try {
+                const { email } = req.params;
+
+                if (!email) {
+                return res.status(400).json({ message: "Email is required" });
+                }
+
+                let User=usersCollection
+
+                const user = await User.findOne(
+                        { email },
+                        { projection: { role: 1, scholarships: 1, courses: 1, universities: 1, events: 1 } }
+                        );
+
+                if (!user) {
+                return res.status(404).json({ message: "User not found" });
+                }
+
+                // ✅ role ambassador না হলে access deny
+                if (user.role !== "ambassador") {
+                return res.status(403).json({ message: "Access denied: Not an ambassador" });
+                }
+
+                // ✅ শুধু true field গুলো পাঠানো হবে
+                const trueFields = {};
+                if (user.scholarships) trueFields.scholarships = true;
+                if (user.courses) trueFields.courses = true;
+                if (user.universities) trueFields.universities = true;
+                if (user.events) trueFields.events = true;
+
+                return res.json({
+                role: user.role,
+                access: trueFields,
+                });
+            } catch (error) {
+                res.status(500).json({ message: error.message });
+            }
+
+        })
+
+        app.patch('/user/ambassador/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const permissions = req.body;
+
+                console.log(id,permissions)
+                
+                const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
+                
+                const updateDoc = {
+                    $set: permissions
+                };
+                
+                const result = await usersCollection.updateOne(query, updateDoc);
+                res.send({ success: true, result });
+            } catch (err) {
+                console.error('Permission update error:', err);
+                res.status(500).send({ success: false, message: 'Failed to update permissions' });
+            }
+        });
+
+        
+
 
         app.post('/post-users', async (req, res) => {
             try {
                 const user = req.body;
                 if (!user || !user.email) return res.status(400).send({ message: 'User data or email is missing' });
-                const existingUser = await dbCollections.usersCollection.findOne({ email: user.email });
+                const existingUser = await usersCollection.findOne({ email: user.email });
                 if (existingUser) return res.status(409).send({ message: 'User already exists' });
-                const result = await dbCollections.usersCollection.insertOne(user);
+                const result = await usersCollection.insertOne(user);
                 res.status(201).send({ message: 'User added successfully', userId: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to add user' });
@@ -128,7 +229,7 @@ async function run() {
         // ===== Help Routes =====
         app.get('/help-from-wws', async (req, res) => {
             try {
-                const result = await dbCollections.helpCollection.find().toArray();
+                const result = await helpCollection.find().toArray();
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: 'Failed to fetch enquiries' });
@@ -149,7 +250,7 @@ async function run() {
                 }
             }
 
-            let result = await dbCollections.helpCollection.updateOne(query, updatedDoc)
+            let result = await helpCollection.updateOne(query, updatedDoc)
 
             res.send(result)
         });
@@ -161,7 +262,7 @@ async function run() {
                 let userEmail = req.params.userEmail
 
                 let query = { userEmail }
-                const result = await dbCollections.helpCollection.find(query).toArray();
+                const result = await helpCollection.find(query).toArray();
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: 'Failed to fetch enquiries' });
@@ -175,7 +276,7 @@ async function run() {
 
                 let query = { _id: new ObjectId(id) }
 
-                const result = await dbCollections.helpCollection.deleteOne(query);
+                const result = await helpCollection.deleteOne(query);
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: 'Failed to delete enquiry' });
@@ -186,7 +287,7 @@ async function run() {
             try {
                 const enquiry = req.body;
                 if (!enquiry) return res.status(400).send({ message: 'No data provided' });
-                const result = await dbCollections.helpCollection.insertOne(enquiry);
+                const result = await helpCollection.insertOne(enquiry);
                 res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to submit enquiry' });
@@ -196,21 +297,21 @@ async function run() {
 
 
         app.get("/api/scholarships", async (req, res) => {
-            const data = await dbCollections.scholarshipsCollection.find().toArray();
+            const data = await scholarshipsCollection.find().toArray();
             res.send(data);
 
 
         })
 
         app.get("/api/universities", async (req, res) => {
-            const data = await dbCollections.universitiesCollection.find().toArray();
+            const data = await universitiesCollection.find().toArray();
             res.send(data);
 
 
         })
 
         app.get("/api/events", async (req, res) => {
-            const data = await dbCollections.eventsCollection.find().toArray();
+            const data = await eventsCollection.find().toArray();
             res.send(data);
 
 
@@ -219,7 +320,7 @@ async function run() {
         // ===== Search GET Routes (All) =====
         app.get('/api/search/course', async (req, res) => {
             try {
-                const data = await dbCollections.coursesCollection.find().toArray();
+                const data = await coursesCollection.find().toArray();
                 res.send({ success: true, data });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch courses' });
@@ -238,14 +339,14 @@ async function run() {
                 ].filter(Boolean) // null বাদ দেওয়ার জন্য
             };
 
-            let result = await dbCollections.scholarshipsCollection.findOne(query)
+            let result = await scholarshipsCollection.findOne(query)
 
             res.send(result)
         })
 
         app.get('/api/search/scholarships', async (req, res) => {
             try {
-                const data = await dbCollections.scholarshipsCollection.find().toArray();
+                const data = await scholarshipsCollection.find().toArray();
                 res.send({ success: true, data });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch scholarships' });
@@ -254,7 +355,7 @@ async function run() {
         
         app.get('/api/search/universities', async (req, res) => {
             try {
-                const data = await dbCollections.universitiesCollection.find().toArray();
+                const data = await universitiesCollection.find().toArray();
                 res.send({ success: true, data });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch universities' });
@@ -273,18 +374,69 @@ async function run() {
                     ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
                 ].filter(Boolean) // null বাদ দেওয়ার জন্য
             };
-            let result = await dbCollections.eventsCollection.findOne(query)
+            let result = await eventsCollection.findOne(query)
             console.log(result)
 
             res.send(result)
         })
 
 
+        app.get('/users', async (req, res) => {
+            try {
+                const data = await usersCollection.find().toArray();
+                res.send({ success: true, data });
+            } catch (err) {
+                res.status(500).send({ success: false, message: 'Failed to fetch users' });
+            }
+        });
+
+            // Update user (PATCH)
+        app.patch('/users/:id', async (req, res) => {
+        try {
+            const id = req.params.id;
+            const updateData = req.body;   // { role: 'admin' } or any field
+
+            const result = await usersCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updateData }
+            );
+
+            if (result.modifiedCount === 0) {
+            return res.send({ success: false, message: 'No changes made or user not found' });
+            }
+
+            res.send({ success: true, message: 'User updated successfully' });
+        } catch (err) {
+            res.status(500).send({ success: false, message: 'Failed to update user' });
+        }
+        });
+
+
+        // Delete user (DELETE)
+        app.delete('/users/:id', async (req, res) => {
+        try {
+            const id = req.params.id;
+
+            const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+
+            if (result.deletedCount === 0) {
+            return res.send({ success: false, message: 'User not found' });
+            }
+
+            res.send({ success: true, message: 'User deleted successfully' });
+        } catch (err) {
+            res.status(500).send({ success: false, message: 'Failed to delete user' });
+        }
+        });
+
+
+
+
 
 
         app.get('/api/search/events', async (req, res) => {
             try {
-                const data = await dbCollections.eventsCollection.find().toArray();
+                const data = await eventsCollection.find().toArray();
                 res.send({ success: true, data });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch events' });
@@ -305,7 +457,7 @@ async function run() {
                 console.log("Scholarships query:", query);
                 
                 // Find matching documents
-                const results = await dbCollections.scholarshipsCollection.find(query).toArray();
+                const results = await scholarshipsCollection.find(query).toArray();
                 console.log("Scholarships results:", results);
                 
                 res.json({ success: true, data: results });
@@ -330,7 +482,7 @@ async function run() {
                 ].filter(Boolean) // null বাদ দেওয়ার জন্য
                 };
 
-            let result=await dbCollections.universitiesCollection.findOne(query)
+            let result=await universitiesCollection.findOne(query)
 
             res.send(result)
         })
@@ -349,7 +501,7 @@ async function run() {
                 console.log("Universities query:", query);
                 
                 // Find matching documents
-                const results = await dbCollections.universitiesCollection.find(query).toArray();
+                const results = await universitiesCollection.find(query).toArray();
                 console.log("Universities results:", results);
                 
                 res.json({ success: true, data: results });
@@ -374,7 +526,7 @@ async function run() {
                 console.log("Events query:", query);
 
                 // Find matching documents
-                const results = await dbCollections.eventsCollection.find(query).toArray();
+                const results = await eventsCollection.find(query).toArray();
                 console.log("Events results:", results);
 
                 res.json({ success: true, data: results });
@@ -399,7 +551,7 @@ async function run() {
                 ].filter(Boolean) // null বাদ দেওয়ার জন্য
             };
 
-            let result = await dbCollections.coursesCollection.findOne(query)
+            let result = await coursesCollection.findOne(query)
 
             res.send(result)
         })
@@ -419,7 +571,7 @@ async function run() {
                 console.log("Course query:", query);
 
                 // Find matching documents
-                const results = await dbCollections.coursesCollection.find(query).toArray();
+                const results = await coursesCollection.find(query).toArray();
                 console.log("Course results:", results);
 
                 res.json({ success: true, data: results });
@@ -431,7 +583,7 @@ async function run() {
 
         app.get('/collaborate', async (req, res) => {
             try {
-                const data = await dbCollections.collaborateCollection.find().toArray();
+                const data = await collaborateCollection.find().toArray();
                 res.send(data);
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to fetch universities' });
@@ -444,7 +596,7 @@ async function run() {
                 const enquiry = req.body;
                 // console.log(enquiry)
                 if (!enquiry) return res.status(400).send({ message: 'No data provided' });
-                const result = await dbCollections.collaborateCollection.insertOne(enquiry);
+                const result = await collaborateCollection.insertOne(enquiry);
                 res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
                 // 2. Email পাঠাও
                 // const mailOptions = {
@@ -492,7 +644,7 @@ async function run() {
                 const data = req.body;
 
 
-                const result = await dbCollections.scholarshipsCollection.insertOne(data);
+                const result = await scholarshipsCollection.insertOne(data);
                 res.status(201).send({ message: 'Scholarship added successfully', userId: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to add Scholarship' });
@@ -515,7 +667,7 @@ async function run() {
                     $set: req.body   // সরাসরি যা আসবে body থেকে, সেটাই update হবে
                 };
 
-                const result = await dbCollections.scholarshipsCollection.updateOne(query, updateDoc);
+                const result = await scholarshipsCollection.updateOne(query, updateDoc);
 
                 res.send(result);   // result এর মধ্যে matchedCount, modifiedCount থাকবে
             } catch (error) {
@@ -530,7 +682,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
-                const result = await dbCollections.scholarshipsCollection.deleteOne(query);
+                const result = await scholarshipsCollection.deleteOne(query);
                 res.send({ success: true, deletedCount: result.deletedCount });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to delete scholarship' });
@@ -542,7 +694,7 @@ async function run() {
                 const data = req.body;
 
 
-                const result = await dbCollections.universitiesCollection.insertOne(data);
+                const result = await universitiesCollection.insertOne(data);
                 res.status(201).send({ message: 'University added successfully', userId: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to add University' });
@@ -561,7 +713,7 @@ async function run() {
                 };
 
                 const updateDoc = { $set: req.body };
-                const result = await dbCollections.universitiesCollection.updateOne(query, updateDoc);
+                const result = await universitiesCollection.updateOne(query, updateDoc);
                 res.send(result);
             } catch (error) {
                 console.error(error);
@@ -574,7 +726,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
-                const result = await dbCollections.universitiesCollection.deleteOne(query);
+                const result = await universitiesCollection.deleteOne(query);
                 res.send({ success: true, deletedCount: result.deletedCount });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to delete university' });
@@ -583,7 +735,7 @@ async function run() {
 
         // ==================Get All Course ==================
         app.get("/api/course", async (req, res) => {
-            const data = await dbCollections.coursesCollection.find().toArray();
+            const data = await coursesCollection.find().toArray();
             res.send(data);
         })
  
@@ -592,7 +744,7 @@ async function run() {
             try {
                 const data = req.body;
 
-                const result = await dbCollections.coursesCollection.insertOne(data);
+                const result = await coursesCollection.insertOne(data);
                 res.status(201).send({ message: 'Course added successfully', courseId: result.insertedId });
             } catch (err) {
                 res.status(500).send({ message: 'Failed to add Course' });
@@ -611,7 +763,7 @@ async function run() {
                 };
 
                 const updateDoc = { $set: req.body };
-                const result = await dbCollections.coursesCollection.updateOne(query, updateDoc);
+                const result = await coursesCollection.updateOne(query, updateDoc);
                 res.send(result);
             } catch (error) {
                 console.error(error);
@@ -624,7 +776,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
-                const result = await dbCollections.coursesCollection.deleteOne(query);
+                const result = await coursesCollection.deleteOne(query);
                 res.send({ success: true, deletedCount: result.deletedCount });
             } catch (err) {
                 res.status(500).send({ success: false, message: 'Failed to delete course' });
@@ -636,7 +788,7 @@ async function run() {
         app.post('/add-new-event', async (req, res) => {
             try {
                 const data = req.body;
-                const result = await dbCollections.eventsCollection.insertOne(data);
+                const result = await eventsCollection.insertOne(data);
                 res.status(201).send({ message: 'Event added successfully', eventId: result.insertedId });
             } catch (err) {
                 console.error(err);
@@ -657,7 +809,7 @@ async function run() {
                 };
 
                 const updateDoc = { $set: req.body };
-                const result = await dbCollections.eventsCollection.updateOne(query, updateDoc);
+                const result = await eventsCollection.updateOne(query, updateDoc);
                 res.send(result);
             } catch (error) {
                 console.error(error);
@@ -670,7 +822,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
-                const result = await dbCollections.eventsCollection.deleteOne(query);
+                const result = await eventsCollection.deleteOne(query);
                 res.send({ success: true, deletedCount: result.deletedCount });
             } catch (err) {
                 console.error(err);
@@ -694,7 +846,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
-                const event = await dbCollections.eventsCollection.findOne(query);
+                const event = await eventsCollection.findOne(query);
 
                 if (!event) {
                     return res.status(404).send({ success: false, message: 'Event not found' });
