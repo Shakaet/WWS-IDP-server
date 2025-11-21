@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(cookieParser());
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app"],
+    origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app","https://graceful-sable-b6d5d1.netlify.app"],
     credentials: true
 }));
 
