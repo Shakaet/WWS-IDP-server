@@ -20,16 +20,11 @@ app.use(cors({
 
 // Email transporter (Gmail Example)
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,   // তোমার Gmail
-    pass: process.env.EMAIL_PASS    // App Password (normal password নয়)
-  }
-//     service: "gmail",
-//     auth: {
-//         user: process.env.EMAIL_USER,   // তোমার Gmail
-//         pass: process.env.EMAIL_PASS    // App Password (normal password নয়)
-//     }
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,   // তোমার Gmail
+        pass: process.env.EMAIL_PASS    // App Password (normal password নয়)
+    }
 });
 
 
@@ -46,48 +41,35 @@ const client = new MongoClient(process.env.MONGO_DB_URI, {
 
 async function run() {
     try {
-        // await client.connect(); // ✅ Important for production
-        // console.log("Connected to MongoDB");
-        // const db = client.db('wwsDB');
-
-        
-        // Assign all collections
+        console.log("Connected to MongoDB");
+        const database = client.db('wwsDB');
 
 
-        const database = client.db("wwsDB");
     const usersCollection = database.collection("users");
-    const helpCollection=database.collection("help")
-    const scholarshipsCollection=database.collection("scholarships")
+    const helpCollection=database.collection("helpFrom")
+    const  coursesCollection=database.collection("courses")
+    const  scholarshipsCollection=database.collection("scholarships")
     const universitiesCollection=database.collection("universities")
-    const eventsCollection=database.collection("events")
-    const coursesCollection = database.collection("courses");
+    const eventsCollection= database.collection("events");
     const collaborateCollection = database.collection("collaborate");
 
-        // dbCollections = {
-        //   usersCollection: db.collection("users"),
-        //   helpCollection: db.collection("help"),
-        //   scholarshipsCollection: db.collection("scholarships"),
-        //   universitiesCollection: db.collection("universities"),
-        //   eventsCollection: db.collection("events"),
-        //   coursesCollection: db.collection("courses"),
-        //   collaborateCollection: db.collection("collaborate")
-        // };
+       
         app.get("/getUser/:email", async (req, res) => {
 
-            let email = req.params.email
+                        let email = req.params.email
 
             let query = { email: email }
-            let result = await usersCollection.findOne(query)
+            let result = await dbCollections.usersCollection.findOne(query)
 
-            if (!result) {
-                return res.send({ message: "No user found" })
-            }
-            let user = false
-            if (result.role === "user") {
-                user = true
-            }
+                        if (!result) {
+                            return res.send({ message: "No user found" })
+                        }
+                        let user = false
+                        if (result.role === "user") {
+                            user = true
+                        }
 
-            res.send({ user })
+                        res.send({ user })
 
 
 
@@ -225,7 +207,7 @@ async function run() {
                 res.status(500).send({ message: 'Failed to add user' });
             }
         });
-        
+
         // ===== Help Routes =====
         app.get('/help-from-wws', async (req, res) => {
             try {
@@ -352,7 +334,7 @@ async function run() {
                 res.status(500).send({ success: false, message: 'Failed to fetch scholarships' });
             }
         });
-        
+
         app.get('/api/search/universities', async (req, res) => {
             try {
                 const data = await universitiesCollection.find().toArray();
@@ -448,18 +430,18 @@ async function run() {
             try {
                 const { studyLevel, destination } = req.body;
                 console.log("Scholarships Request body:", req.body);
-                
+
                 // Build query for flat structure
                 const query = {};
                 if (studyLevel) query.studyLevel = { $regex: studyLevel, $options: "i" };
                 if (destination) query.destination = { $regex: destination, $options: "i" };
-                
+
                 console.log("Scholarships query:", query);
-                
+
                 // Find matching documents
                 const results = await scholarshipsCollection.find(query).toArray();
                 console.log("Scholarships results:", results);
-                
+
                 res.json({ success: true, data: results });
             } catch (error) {
                 console.error("Scholarships search error:", error);
@@ -469,54 +451,54 @@ async function run() {
 
 
 
-        
-        app.get("/api/university/:id",async(req,res)=>{
 
-            let id=req.params.id
+        app.get("/api/university/:id", async (req, res) => {
 
-                  // OR query বানানো হচ্ছে
-                const query = {
+            let id = req.params.id
+
+            // OR query বানানো হচ্ছে
+            const query = {
                 $or: [
                     { _id: id }, // string match
                     ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
                 ].filter(Boolean) // null বাদ দেওয়ার জন্য
-                };
+            };
 
-            let result=await universitiesCollection.findOne(query)
+            let result=await dbCollections.universitiesCollection.findOne(query)
 
             res.send(result)
         })
-        
+
         // ===== Universities Search POST Route (Fixed for flat structure) =====
         app.post('/api/search/universities', async (req, res) => {
             try {
                 const { universityName, destination } = req.body;
                 console.log("Universities Request body:", req.body);
-                
+
                 // Build query for flat structure
                 const query = {};
                 if (universityName) query.universityName = { $regex: universityName, $options: "i" };
                 if (destination) query.destination = { $regex: destination, $options: "i" };
-                
+
                 console.log("Universities query:", query);
-                
+
                 // Find matching documents
                 const results = await universitiesCollection.find(query).toArray();
                 console.log("Universities results:", results);
-                
+
                 res.json({ success: true, data: results });
             } catch (error) {
                 console.error("Universities search error:", error);
                 res.status(500).json({ success: false, message: "University search failed" });
             }
         });
-        
+
         // ===== Events Search POST Route (Fixed for flat structure) =====
         app.post('/api/search/events', async (req, res) => {
             try {
                 const { city, month, destination } = req.body;
                 console.log("Events Request body:", req.body);
-                
+
                 // Build query for flat structure
                 const query = {};
                 if (city) query.city = { $regex: city, $options: "i" };
