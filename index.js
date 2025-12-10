@@ -52,11 +52,107 @@ async function run() {
     const universitiesCollection=database.collection("universities")
     const eventsCollection= database.collection("events");
     const collaborateCollection = database.collection("collaborate");
+    const popularCollection = database.collection("popular");
+
+
+
+
+    app.get("/popular",async(req,res)=>{
+
+    let result = await popularCollection.find().toArray()
+
+    res.send(result)
+
+
+    })
+
+
+
+    app.get("/popular/courses",async(req,res)=>{
+
+
+
+        const {
+        country,
+        level,
+        gpa_percent,
+        english_test,
+        total_score,
+        budget_per_year,
+        preferred_intake,
+        study_gaps_years
+    } = req.query;
+
+    let results =await popularCollection.find().toArray()
+
+    // 🔍 Filter: Country
+    if (country) {
+        results = results.filter(item =>
+            item.country.toLowerCase() === country.toLowerCase()
+        );
+    }
+
+    // 🔍 Filter: Level
+    if (level) {
+        results = results.filter(item =>
+            item.level.toLowerCase() === level.toLowerCase()
+        );
+    }
+
+    // 🔍 Filter: Minimum GPA (>=)
+    if (gpa_percent) {
+        results = results.filter(item =>
+            item.gpa_percent >= Number(gpa_percent)
+        );
+    }
+
+    // 🔍 Filter: English Test Type (IELTS / PTE / TOEFL)
+    if (english_test) {
+        results = results.filter(item =>
+            item.english_test.toLowerCase() === english_test.toLowerCase()
+        );
+    }
+
+    // 🔍 Filter: Total Score (>=)
+    if (total_score) {
+        results = results.filter(item =>
+            item.total_score >= Number(total_score)
+        );
+    }
+
+    // 🔍 Filter: Budget (<= max budget)
+    if (budget_per_year) {
+        results = results.filter(item =>
+            item.budget_per_year <= Number(budget_per_year)
+        );
+    }
+
+    // 🔍 Filter: Preferred Intake
+    if (preferred_intake) {
+        results = results.filter(item =>
+            item.preferred_intake.toLowerCase() === preferred_intake.toLowerCase()
+        );
+    }
+
+    // 🔍 Filter: Study Gap (<= allowed gap)
+    if (study_gaps_years) {
+        results = results.filter(item =>
+            item.study_gaps_years <= Number(study_gaps_years)
+        );
+    }
+
+    res.json({
+        success: true,
+        count: results.length,
+        data: results,
+    });
+
+    })
 
        
         app.get("/getUser/:email", async (req, res) => {
 
-                        let email = req.params.email
+            let email = req.params.email
 
             let query = { email: email }
             let result = await dbCollections.usersCollection.findOne(query)
