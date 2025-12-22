@@ -1,5 +1,5 @@
-import { tools } from "../tools";
-import { AgentState } from "../AgentState";
+import { tools } from "../tools.js";
+import { AgentState } from "../AgentState.js";
 
 // interface validatedArgtype{
 //     title: string;

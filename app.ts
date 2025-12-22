@@ -1,16 +1,37 @@
 import express from 'express';
+import { createServer } from 'node:http';
+import {Server} from 'socket.io';
+
 import cors from 'cors';
 import dotenv from 'dotenv';
 import nodemailer from "nodemailer";
 import { ObjectId } from 'mongodb';
-import { initDb, getCollections } from './db';
+import { initDb, getCollections } from './db.js';
 import cookieParser from 'cookie-parser';
-import path from 'path';
 
-
+// router imports
+import popularRouter from './routes/popular.js';
+import helpFromWWSRouter from './routes/help-from-wws.js';
+import apiRouter from './routes/api.js';
+import userRouter from './routes/user.js';
+import chatbotHandler  from './routes/chatbot.js';
+ 
 dotenv.config();
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer,{
+    cors: {
+        origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app","https://graceful-sable-b6d5d1.netlify.app"],
+        credentials: true
+    }
+});
 const port = process.env.PORT || 3000;
+
+chatbotHandler(io);
+
+httpServer.listen(port, () => {
+    console.log('Server running on port', port);
+});
 
 // Middleware
 app.use(cookieParser());
@@ -45,9 +66,15 @@ async function run() {
         const collaborateCollection = cols.collaborate;
 
         // Mount routers
-        app.use('/popular', require(path.join(__dirname, 'routes/popular')));
-        
-        app.use('/chatbot', require(path.join(__dirname, 'routes/chatbot')));
+        app.use('/popular', popularRouter);
+                
+        app.use('/help-from-wws', helpFromWWSRouter);
+
+        app.use('/api', apiRouter);
+
+        app.use('/user', userRouter);
+
+
        
         app.get("/getUser/:email", async (req, res) => {
 
@@ -65,9 +92,6 @@ async function run() {
                         }
 
                         res.send({ user })
-
-
-
         })
 
         app.get("/getAdmin/:email", async (req, res) => {
@@ -106,10 +130,6 @@ async function run() {
             res.send({ ambassador })
         })
 
-        // ===== Ambassador Permission Routes =====
-
-        app.use('/user', require(path.join(__dirname, 'routes/user')));
-
         app.get("/ambassador/access/:email",async(req,res)=>{
 
             try {
@@ -146,7 +166,7 @@ async function run() {
                 role: user.role,
                 access: trueFields,
                 });
-            } catch (error) {
+            } catch (error: any) {
                 res.status(500).json({ message: error.message });
             }
 
@@ -164,13 +184,7 @@ async function run() {
                 res.status(500).send({ message: 'Failed to add user' });
             }
         });
-
-        // ===== Help Routes =====
-        
-        app.use('/help-from-wws', require(path.join(__dirname, 'routes/help-from-wws')));
-
-        app.use('/api', require(path.join(__dirname, 'routes/api')));
-
+      
         app.get('/users', async (req, res) => {
             try {
                 const data = await usersCollection.find().toArray();
@@ -180,7 +194,7 @@ async function run() {
             }
         });
 
-            // Update user (PATCH)
+        // Update user (PATCH)
         app.patch('/users/:id', async (req, res) => {
         try {
             const id = req.params.id;
@@ -344,9 +358,5 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-    res.send("World Wise Scholar Server is cooking...!");
-});
-
-app.listen(port, () => {
-    console.log('Server running on port', port);
+    res.send("World Wise Scholar Server is cooking...!")
 });

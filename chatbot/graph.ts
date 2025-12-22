@@ -1,7 +1,7 @@
 import { StateGraph, END , Annotation, START} from "@langchain/langgraph";
-import { llmNode } from "./nodes/llmNode";
-import { toolNode } from "./nodes/toolNode";
-import { StateAnnotation, AgentState } from "./AgentState";
+import { llmNode } from "./nodes/llmNode.js";
+import { toolNode } from "./nodes/toolNode.js";
+import { StateAnnotation, AgentState } from "./AgentState.js";
 
 const graph = new StateGraph(StateAnnotation)
   .addNode("llm", llmNode)

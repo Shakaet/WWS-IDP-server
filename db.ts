@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion, Db, Collection } from 'mongodb';
 
 dotenv.config();
 
@@ -8,6 +8,20 @@ if (!url) {
   throw new Error('MONGO_DB_URI is not set in environment');
 }
 
+/* ---------- Types ---------- */
+
+export interface wwsCollections {
+  users: Collection;
+  helpFrom: Collection;
+  courses: Collection;
+  scholarships: Collection;
+  universities: Collection;
+  events: Collection;
+  collaborate: Collection;
+  popular: Collection;
+}
+
+// creating a MongoClient
 const client = new MongoClient(url, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -16,11 +30,16 @@ const client = new MongoClient(url, {
   },
 });
 
-let db: ReturnType<MongoClient['db']> | null = null;
-let collections: Record<string, any> | null = null;
+let db: Db | null = null;
+let collections: wwsCollections | null = null;
+let initPromise: Promise<wwsCollections> | null = null;
 
-export async function initDb() {
-  if (!db) {
+
+export async function initDb() : Promise<wwsCollections> {
+  if (collections) return collections;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
     await client.connect();
     db = client.db('wwsDB');
     collections = {
@@ -31,28 +50,23 @@ export async function initDb() {
       universities: db.collection('universities'),
       events: db.collection('events'),
       collaborate: db.collection('collaborate'),
-      popular: db.collection('popular'),
+      popular: db.collection('popular')
     };
-  }
-  return collections;
+    return collections;
+  })();
+  
+  return initPromise;
 }
 
-export function getCollections() {
+export function getCollections(): wwsCollections {
   if (!collections) throw new Error('Database not initialized. Call initDb() first.');
-  return collections as {
-    users: any;
-    helpFrom: any;
-    courses: any;
-    scholarships: any;
-    universities: any;
-    events: any;
-    collaborate: any;
-    popular: any;
-  };
+  return collections as wwsCollections;
 }
 
 export async function closeDb() {
-  await client.close();
+  if (client) await client.close();
+
   db = null;
   collections = null;
+  initPromise = null;
 }

@@ -1,7 +1,8 @@
-import { model } from "../model";
-import { SYSTEM_MESSAGE } from "../prompt";
-import { AgentState } from "../AgentState";
+import { pseudoLlmNode } from "../psedomodel.js";
+import { SYSTEM_MESSAGE } from "../prompt.js";
+import { AgentState } from "../AgentState.js";
 import { BaseMessage } from "@langchain/core/messages";
+
 
 export async function llmNode(state: AgentState) : Promise<Partial<AgentState>> {
   
@@ -16,7 +17,10 @@ ${state.final_output ?? "none"}
 `;
 
   console.log("LLM Prompt:", prompt);
-  const raw = await model.invoke(prompt);
+  
+  const raw: string = await pseudoLlmNode(prompt);
+
+  console.log("LLM Raw Response:", raw);
 
   let parsed;
   try {

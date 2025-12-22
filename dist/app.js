@@ -1,28 +1,41 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const nodemailer_1 = __importDefault(require("nodemailer"));
-const mongodb_1 = require("mongodb");
-const db_1 = require("./db");
-const cookie_parser_1 = __importDefault(require("cookie-parser"));
-const path_1 = __importDefault(require("path"));
-dotenv_1.default.config();
-const app = (0, express_1.default)();
+import express from 'express';
+import { createServer } from 'node:http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import nodemailer from "nodemailer";
+import { ObjectId } from 'mongodb';
+import { initDb, getCollections } from './db.js';
+import cookieParser from 'cookie-parser';
+// router imports
+import popularRouter from './routes/popular.js';
+import helpFromWWSRouter from './routes/help-from-wws.js';
+import apiRouter from './routes/api.js';
+import userRouter from './routes/user.js';
+import chatbotHandler from './routes/chatbot.js';
+dotenv.config();
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: ['http://localhost:5173', "https://wws-idp-website.vercel.app", "https://graceful-sable-b6d5d1.netlify.app"],
+        credentials: true
+    }
+});
 const port = process.env.PORT || 3000;
+chatbotHandler(io);
+httpServer.listen(port, () => {
+    console.log('Server running on port', port);
+});
 // Middleware
-app.use((0, cookie_parser_1.default)());
-app.use(express_1.default.json());
-app.use((0, cors_1.default)({
+app.use(cookieParser());
+app.use(express.json());
+app.use(cors({
     origin: ['http://localhost:5173', "https://wws-idp-website.vercel.app", "https://graceful-sable-b6d5d1.netlify.app"],
     credentials: true
 }));
 // Email transporter (Gmail Example)
-const transporter = nodemailer_1.default.createTransport({
+const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
         user: process.env.EMAIL_USER, // তোমার Gmail
@@ -33,8 +46,8 @@ const transporter = nodemailer_1.default.createTransport({
 async function run() {
     try {
         console.log('Initializing DB');
-        await (0, db_1.initDb)();
-        const cols = (0, db_1.getCollections)();
+        await initDb();
+        const cols = getCollections();
         const usersCollection = cols.users;
         const coursesCollection = cols.courses;
         const scholarshipsCollection = cols.scholarships;
@@ -42,8 +55,10 @@ async function run() {
         const eventsCollection = cols.events;
         const collaborateCollection = cols.collaborate;
         // Mount routers
-        app.use('/popular', require(path_1.default.join(__dirname, 'routes/popular')));
-        app.use('/chatbot', require(path_1.default.join(__dirname, 'routes/chatbot')));
+        app.use('/popular', popularRouter);
+        app.use('/help-from-wws', helpFromWWSRouter);
+        app.use('/api', apiRouter);
+        app.use('/user', userRouter);
         app.get("/getUser/:email", async (req, res) => {
             let email = req.params.email;
             let query = { email: email };
@@ -83,8 +98,6 @@ async function run() {
             }
             res.send({ ambassador });
         });
-        // ===== Ambassador Permission Routes =====
-        app.use('/user', require(path_1.default.join(__dirname, 'routes/user')));
         app.get("/ambassador/access/:email", async (req, res) => {
             try {
                 const { email } = req.params;
@@ -134,9 +147,6 @@ async function run() {
                 res.status(500).send({ message: 'Failed to add user' });
             }
         });
-        // ===== Help Routes =====
-        app.use('/help-from-wws', require(path_1.default.join(__dirname, 'routes/help-from-wws')));
-        app.use('/api', require(path_1.default.join(__dirname, 'routes/api')));
         app.get('/users', async (req, res) => {
             try {
                 const data = await usersCollection.find().toArray();
@@ -151,7 +161,7 @@ async function run() {
             try {
                 const id = req.params.id;
                 const updateData = req.body; // { role: 'admin' } or any field
-                const result = await usersCollection.updateOne({ _id: new mongodb_1.ObjectId(id) }, { $set: updateData });
+                const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateData });
                 if (result.modifiedCount === 0) {
                     return res.send({ success: false, message: 'No changes made or user not found' });
                 }
@@ -165,7 +175,7 @@ async function run() {
         app.delete('/users/:id', async (req, res) => {
             try {
                 const id = req.params.id;
-                const result = await usersCollection.deleteOne({ _id: new mongodb_1.ObjectId(id) });
+                const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
                 if (result.deletedCount === 0) {
                     return res.send({ success: false, message: 'User not found' });
                 }
@@ -289,7 +299,4 @@ async function run() {
 run().catch(console.dir);
 app.get('/', (req, res) => {
     res.send("World Wise Scholar Server is cooking...!");
-});
-app.listen(port, () => {
-    console.log('Server running on port', port);
 });

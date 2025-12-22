@@ -1,29 +1,27 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.initDb = initDb;
-exports.getCollections = getCollections;
-exports.closeDb = closeDb;
-const dotenv_1 = __importDefault(require("dotenv"));
-const mongodb_1 = require("mongodb");
-dotenv_1.default.config();
+import dotenv from 'dotenv';
+import { MongoClient, ServerApiVersion } from 'mongodb';
+dotenv.config();
 const url = process.env.MONGO_DB_URl;
 if (!url) {
     throw new Error('MONGO_DB_URI is not set in environment');
 }
-const client = new mongodb_1.MongoClient(url, {
+// creating a MongoClient
+const client = new MongoClient(url, {
     serverApi: {
-        version: mongodb_1.ServerApiVersion.v1,
+        version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
     },
 });
 let db = null;
 let collections = null;
-async function initDb() {
-    if (!db) {
+let initPromise = null;
+export async function initDb() {
+    if (collections)
+        return collections;
+    if (initPromise)
+        return initPromise;
+    initPromise = (async () => {
         await client.connect();
         db = client.db('wwsDB');
         collections = {
@@ -34,18 +32,21 @@ async function initDb() {
             universities: db.collection('universities'),
             events: db.collection('events'),
             collaborate: db.collection('collaborate'),
-            popular: db.collection('popular'),
+            popular: db.collection('popular')
         };
-    }
-    return collections;
+        return collections;
+    })();
+    return initPromise;
 }
-function getCollections() {
+export function getCollections() {
     if (!collections)
         throw new Error('Database not initialized. Call initDb() first.');
     return collections;
 }
-async function closeDb() {
-    await client.close();
+export async function closeDb() {
+    if (client)
+        await client.close();
     db = null;
     collections = null;
+    initPromise = null;
 }
