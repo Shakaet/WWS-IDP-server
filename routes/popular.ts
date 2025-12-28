@@ -2,7 +2,7 @@ import express from "express";
 
 const router = express.Router();
 
-import { getCollections } from "../db";
+import { getCollections } from "../db.js";
 
 interface CourseItem {
     country: string;
@@ -34,7 +34,7 @@ router.get("/",async (req: express.Request, res: express.Response): Promise<void
 
     try {
         const { popular } = getCollections();
-        const result: CourseItem[] = await popular.find().toArray();
+        const result: CourseItem[] = await popular.find<CourseItem>({}).toArray();
 
         res.send(result);
     } catch (err: unknown) {
@@ -51,7 +51,7 @@ router.get("/courses",async (req: express.Request, res: express.Response): Promi
 
     try {
         const { popular } = getCollections();
-        let results: CourseItem[] = await popular.find().toArray();
+        let results: CourseItem[] = await popular.find<CourseItem>({}).toArray();
 
         // 🔍 Filter: Country
         if (country) {
@@ -119,4 +119,4 @@ router.get("/courses",async (req: express.Request, res: express.Response): Promi
     }
 })
 
-module.exports = router;
+export default router
