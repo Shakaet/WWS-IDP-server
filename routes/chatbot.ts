@@ -92,4 +92,29 @@ router.get("/chathistory", async (req: express.Request, res: express.Response) =
   });
 });
 
+router.post("/human_feedback", async (req: express.Request, res: express.Response) => {
+  const { thread_id, feedback } = req.body as { thread_id: string; feedback: string };
+  const { chatHistory : chatHistoryCollection } = getCollections();
+
+  const existingThread = await chatHistoryCollection.findOne({ thread_id: thread_id });
+  if (!existingThread) {
+    console.log(`No existing thread found for ID: ${thread_id}`);
+    return res.status(404).json({
+      status: "invalid_thread",
+      error: "Thread ID not found"
+    });
+  }
+
+  const updatedMessages = [...existingThread.messages, { type: "human_feedback", content: feedback } as BaseMessage];
+  await chatHistoryCollection.updateOne(
+    { thread_id: thread_id },
+    { $set: { messages: updatedMessages } }
+  );
+
+  return res.status(200).json({
+    status: "success",
+    message: "Feedback recorded successfully"
+  });
+});
+
 export default router
