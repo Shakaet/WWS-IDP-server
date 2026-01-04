@@ -3,7 +3,7 @@ import { MongoClient, ServerApiVersion, Db, Collection } from 'mongodb';
 
 dotenv.config();
 
-const url = process.env.MONGO_DB_URl;
+const url = process.env.MONGO_DB_URL;
 if (!url) {
   throw new Error('MONGO_DB_URL is not set in environment');
 }

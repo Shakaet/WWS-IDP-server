@@ -53,24 +53,33 @@ router.post("/message", async (req: express.Request, res: express.Response) => {
       messages: existingThread?.messages.concat([{ type: "user", content: message } as BaseMessage]) || [{ type: "user", content: message } as BaseMessage],
       final_output: existingThread ? existingThread.final_output : null,
       toolCall: existingThread ? existingThread.toolCall : null,
-  };    
+  };
 
-  const result: AgentState = await Promise.race([
-    chatbot.invoke(initialState),
-    new Promise<AgentState>((_, reject) =>
-        setTimeout(() => reject(new Error("LLM call timed out")), 130000) // 30s timeout
-    ),
-  ]);
-  console.log(`Chatbot processing completed for thread ${thread_id} and final message array is:\n${JSON.stringify(result.messages, null, 2)}`);
-  await chatHistoryCollection.updateOne(
-    { thread_id: thread_id },
-    { $set: { messages: result.messages, final_output: result.final_output, toolCall: result.toolCall } }
-  );
-  // console.log(`Chatbot response for thread ${thread_id}: ${result.final_output}`);
-  return res.status(200).json({ 
-    status: "success", 
-    response: result.final_output 
-  });
+  try {
+    const result: AgentState = await Promise.race([
+      chatbot.invoke(initialState),
+      new Promise<AgentState>((_, reject) =>
+        setTimeout(() => reject(new Error("LLM call timed out")), 30000) // 30s timeout
+      ),
+    ]);
+
+    console.log(`Chatbot processing completed for thread ${thread_id} and final message array is:\n${JSON.stringify(result.messages, null, 2)}`);
+    await chatHistoryCollection.updateOne(
+      { thread_id: thread_id },
+      { $set: { messages: result.messages, final_output: result.final_output, toolCall: result.toolCall } }
+    );
+
+    return res.status(200).json({
+      status: "success",
+      response: result.final_output,
+    });
+  } catch (err: any) {
+    console.error(`Error in /chatbot/message for thread ${thread_id}:`, err);
+    if (err && err.message && err.message.includes('timed out')) {
+      return res.status(504).json({ status: 'error', error: 'LLM call timed out' });
+    }
+    return res.status(500).json({ status: 'error', error: 'Internal server error' });
+  }
 });
 
 router.get("/chathistory", async (req: express.Request, res: express.Response) => {
