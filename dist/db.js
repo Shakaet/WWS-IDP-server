@@ -3,7 +3,7 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 dotenv.config();
 const url = process.env.MONGO_DB_URl;
 if (!url) {
-    throw new Error('MONGO_DB_URI is not set in environment');
+    throw new Error('MONGO_DB_URL is not set in environment');
 }
 // creating a MongoClient
 const client = new MongoClient(url, {
@@ -32,7 +32,8 @@ export async function initDb() {
             universities: db.collection('universities'),
             events: db.collection('events'),
             collaborate: db.collection('collaborate'),
-            popular: db.collection('popular')
+            popular: db.collection('popular'),
+            chatHistory: db.collection('chatHistory'),
         };
         return collections;
     })();

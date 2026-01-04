@@ -2,28 +2,42 @@ import express from "express";
 import { chatbot } from "../chatbot/graph.js";
 import { AgentState } from "../chatbot/AgentState.js";
 import { v4 as uuidv4 } from "uuid"; // for generating new thread IDs
+import { getCollections } from "../db.js";
+import { BaseMessage } from "@langchain/core/messages";
 const router = express.Router();
 
 // 2. Export the function with proper types
 router.post("/connection", async (req: express.Request, res: express.Response) => {
   const { thread_id } = req.body as { thread_id: string | null };
+  const { chatHistory : chatHistoryCollection } = getCollections();
   if (!thread_id) {
     console.log("User started a new Chatbot thread");
     const new_thread_id: string = uuidv4()
+    await chatHistoryCollection.insertOne({ thread_id: new_thread_id, messages: [] });
     return res.status(400).json({ 
       status: "new_thread", 
-      thread_id: new_thread_id 
+      thread_id: new_thread_id ,
     });
   }else {
-    console.log(`User joined the Chatbot: ${thread_id}`);
-    return res.status(200).json({
-      status: "existing_thread",
-      thread_id: thread_id
-    });
+    const existingThread = await chatHistoryCollection.findOne({ thread_id: thread_id });
+    if (!existingThread) {
+      console.log(`No existing thread found for ID: ${thread_id}`);
+      return res.status(404).json({ 
+        status: "invalid_thread", 
+        error: "Thread ID not found" 
+      });
+    }else{
+      console.log(`User joined the Chatbot: ${thread_id}`);
+      return res.status(200).json({
+        status: "existing_thread",
+        thread_id: thread_id
+      });
+    }
   }
 });
 
 router.post("/message", async (req: express.Request, res: express.Response) => {
+  const { chatHistory : chatHistoryCollection } = getCollections();
   const { message, thread_id } = req.body as { message: string; thread_id: string | null };
   if (!thread_id) {
     console.log("No thread_id provided in /chatbot/message");
@@ -33,18 +47,26 @@ router.post("/message", async (req: express.Request, res: express.Response) => {
     });
   }
   console.log(`Message received in /chatbot/message: ${message} for thread: ${thread_id}`);
+  const existingThread = await chatHistoryCollection.findOne({ thread_id: thread_id }) as AgentState | null;
+
   const initialState: AgentState = {
-      messages: [],
-      final_output: null,
-      toolCall: null,
-  };      
+      messages: existingThread?.messages.concat([{ type: "user", content: message } as BaseMessage]) || [{ type: "user", content: message } as BaseMessage],
+      final_output: existingThread ? existingThread.final_output : null,
+      toolCall: existingThread ? existingThread.toolCall : null,
+  };    
+
   const result: AgentState = await Promise.race([
     chatbot.invoke(initialState),
     new Promise<AgentState>((_, reject) =>
         setTimeout(() => reject(new Error("LLM call timed out")), 130000) // 30s timeout
     ),
   ]);
-  console.log(`Chatbot response for thread ${thread_id}: ${result.final_output}`);
+  console.log(`Chatbot processing completed for thread ${thread_id} and final message array is:\n${JSON.stringify(result.messages, null, 2)}`);
+  await chatHistoryCollection.updateOne(
+    { thread_id: thread_id },
+    { $set: { messages: result.messages, final_output: result.final_output, toolCall: result.toolCall } }
+  );
+  // console.log(`Chatbot response for thread ${thread_id}: ${result.final_output}`);
   return res.status(200).json({ 
     status: "success", 
     response: result.final_output 
@@ -53,14 +75,20 @@ router.post("/message", async (req: express.Request, res: express.Response) => {
 
 router.get("/chathistory", async (req: express.Request, res: express.Response) => {
   const { thread_id } = req.body as { thread_id: string };
+  const { chatHistory : chatHistoryCollection } = getCollections();
   console.log(`Fetching chat history for thread: ${thread_id}`);
+  const existingThread = await chatHistoryCollection.findOne({ thread_id: thread_id });
+  if (!existingThread) {
+    console.log(`No existing thread found for ID: ${thread_id}`);
+    return res.status(404).json({
+      status: "invalid_thread",
+      error: "Thread ID not found"
+    });
+  }
 
   return res.status(200).json({ 
     status: "success", 
-    history: [
-      { role: "user", content: "Hello, how can I apply for scholarships?" },
-      { role: "ai", content: "You can start by researching available scholarships on our platform..." }
-    ] // Placeholder for actual chat history
+    history: existingThread.messages
   });
 });
 
