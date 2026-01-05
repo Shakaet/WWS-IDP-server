@@ -40,7 +40,6 @@ ${state.final_output ?? "none"}
     messages: parsed.tool
       ? state.messages
       : [
-          ...state.messages,
           {
             type: "ai", // or appropriate BaseMessage type
             content: parsed.response ?? "",

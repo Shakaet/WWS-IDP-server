@@ -1,6 +1,4 @@
 import express from 'express';
-import { createServer } from 'node:http';
-import {Server} from 'socket.io';
 
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -14,24 +12,11 @@ import popularRouter from './routes/popular.js';
 import helpFromWWSRouter from './routes/help-from-wws.js';
 import apiRouter from './routes/api.js';
 import userRouter from './routes/user.js';
-import chatbotHandler  from './routes/chatbot.js';
+import chatbotRouter from './routes/chatbot.js';
  
 dotenv.config();
 const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer,{
-    cors: {
-        origin: ['http://localhost:5173',"https://wws-idp-website.vercel.app","https://graceful-sable-b6d5d1.netlify.app"],
-        credentials: true
-    }
-});
 const port = process.env.PORT || 3000;
-
-chatbotHandler(io);
-
-httpServer.listen(port, () => {
-    console.log('Server running on port', port);
-});
 
 // Middleware
 app.use(cookieParser());
@@ -41,6 +26,9 @@ app.use(cors({
     credentials: true
 }));
 
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
 // Email transporter (Gmail Example)
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -49,7 +37,6 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS    // App Password (normal password নয়)
     }
 });
-
 
 // Use centralized DB initializer
 async function run() {
@@ -74,6 +61,7 @@ async function run() {
 
         app.use('/user', userRouter);
 
+        app.use('/chatbot', chatbotRouter);
 
        
         app.get("/getUser/:email", async (req, res) => {
@@ -232,7 +220,6 @@ async function run() {
         }
         });
 
-
         app.get('/collaborate', async (req, res) => {
             try {
                 const data = await collaborateCollection.find().toArray();
@@ -248,8 +235,6 @@ async function run() {
                 const enquiry = req.body;
                 // console.log(enquiry)
                 if (!enquiry) return res.status(400).send({ message: 'No data provided' });
-                const result = await collaborateCollection.insertOne(enquiry);
-                res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
                 // 2. Email পাঠাও
                 // const mailOptions = {
                 // from: process.env.EMAIL_USER,
@@ -257,6 +242,8 @@ async function run() {
                 // subject: "Your Post has been Submitted",
                 // text: `${enquiry.email}, your post has been submitted successfully. We will contact you soon!`
                 // };
+
+                const result = await collaborateCollection.insertOne(enquiry);
 
                 const mailOptions = {
                     from: process.env.EMAIL_USER,
@@ -280,10 +267,12 @@ async function run() {
                     `
                 };
 
-
                 await transporter.sendMail(mailOptions);
 
+                res.send({ message: 'Enquiry submitted successfully', id: result.insertedId });
+
             } catch (err) {
+                console.error('Error in /collaborate:', err);
                 res.status(500).send({ message: 'Failed to submit enquiry' });
             }
         });

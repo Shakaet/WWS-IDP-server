@@ -1,6 +1,4 @@
 import express from 'express';
-import { createServer } from 'node:http';
-import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import nodemailer from "nodemailer";
@@ -12,21 +10,10 @@ import popularRouter from './routes/popular.js';
 import helpFromWWSRouter from './routes/help-from-wws.js';
 import apiRouter from './routes/api.js';
 import userRouter from './routes/user.js';
-import chatbotHandler from './routes/chatbot.js';
+import chatbotRouter from './routes/chatbot.js';
 dotenv.config();
 const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: {
-        origin: ['http://localhost:5173', "https://wws-idp-website.vercel.app", "https://graceful-sable-b6d5d1.netlify.app"],
-        credentials: true
-    }
-});
 const port = process.env.PORT || 3000;
-chatbotHandler(io);
-httpServer.listen(port, () => {
-    console.log('Server running on port', port);
-});
 // Middleware
 app.use(cookieParser());
 app.use(express.json());
@@ -34,6 +21,9 @@ app.use(cors({
     origin: ['http://localhost:5173', "https://wws-idp-website.vercel.app", "https://graceful-sable-b6d5d1.netlify.app"],
     credentials: true
 }));
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
 // Email transporter (Gmail Example)
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -59,6 +49,7 @@ async function run() {
         app.use('/help-from-wws', helpFromWWSRouter);
         app.use('/api', apiRouter);
         app.use('/user', userRouter);
+        app.use('/chatbot', chatbotRouter);
         app.get("/getUser/:email", async (req, res) => {
             let email = req.params.email;
             let query = { email: email };

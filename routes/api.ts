@@ -88,19 +88,23 @@ router.get('/search/universities', async (req, res) => {
     }
 });
 
-router.get("/event/:id", async (req, res) => {
-    const { events : eventsCollection } = getCollections();
-    let id = req.params.id
-    console.log(id)
+// ================== Get Single Event by ID ==================
+router.get('/event/:id', async (req, res) => {
+    try {
+        const { events : eventsCollection } = getCollections();
+        const id = req.params.id;
+        const event = await eventsCollection.findOne({_id: parseObjectId(req.params.id)});
 
-    // OR query বানানো হচ্ছে
-    const query = { _id: parseObjectId(id) };
-    let result = await eventsCollection.findOne(query)
-    console.log(result)
+        if (!event) {
+            return res.status(404).send({ success: false, message: 'Event not found' });
+        }
 
-    res.send(result)
-})
-
+        res.send({ success: true, data: event });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send({ success: false, message: 'Failed to fetch event' });
+    }
+});
 router.get('/search/events', async (req, res) => {
     try {
         const { events : eventsCollection } = getCollections();
@@ -314,7 +318,6 @@ router.put('/course/:id', async (req, res) => {
         const { courses : coursesCollection } = getCollections();
         const id = req.params.id;
         const query = { _id: parseObjectId(id) };
-
         const updateDoc = { $set: req.body };
         const result = await coursesCollection.updateOne(query, updateDoc);
         res.send(result);
@@ -331,6 +334,7 @@ router.delete('/course/:id', async (req, res) => {
         const id = req.params.id;
         const query = { _id: parseObjectId(id) };
         const result = await coursesCollection.deleteOne(query);
+
         res.send({ success: true, deletedCount: result.deletedCount });
     } catch (err) {
         res.status(500).send({ success: false, message: 'Failed to delete course' });
@@ -367,22 +371,6 @@ router.delete('/event/:id', async (req, res) => {
     }
 });
 
-// ================== Get Single Event by ID ==================
-router.get('/event/:id', async (req, res) => {
-    try {
-        const { events : eventsCollection } = getCollections();
-        const id = req.params.id;
-        const event = await eventsCollection.findOne({_id: parseObjectId(req.params.id)});
 
-        if (!event) {
-            return res.status(404).send({ success: false, message: 'Event not found' });
-        }
-
-        res.send({ success: true, data: event });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send({ success: false, message: 'Failed to fetch event' });
-    }
-});
 
 export default router;
