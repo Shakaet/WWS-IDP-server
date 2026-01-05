@@ -15,6 +15,63 @@ router.get('/ambassador', async (req : express.Request, res: express.Response): 
     }
 });
 
+router.patch(
+  '/ambassador/:id/show',
+  async (req: express.Request, res: express.Response): Promise<void> => {
+    try {
+      const { users: usersCollection } = getCollections();
+      const { id } = req.params;
+      const { show } = req.body;
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            show: Boolean(show) // 🔥 field না থাকলে create হবে
+          }
+        }
+      );
+
+      res.send({
+        success: true,
+        modifiedCount: result.modifiedCount
+      });
+    } catch (err) {
+      res.status(500).send({
+        success: false,
+        message: 'Failed to update show status'
+      });
+    }
+  }
+);
+
+
+
+router.get(
+  '/ambassador/show',
+  async (req: express.Request, res: express.Response): Promise<void> => {
+    try {
+      const { users: usersCollection } = getCollections();
+
+      const result = await usersCollection
+        .find({
+          role: "ambassador",
+          show: true
+        })
+        .toArray();
+
+      res.send(result);
+    } catch (err) {
+      res.status(500).send({
+        success: false,
+        message: 'Failed to fetch visible ambassadors'
+      });
+    }
+  }
+);
+
+
+
 router.patch('/ambassador/:id', async (req, res) => {
     try {
         const { users: usersCollection } = getCollections();
