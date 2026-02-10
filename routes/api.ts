@@ -57,15 +57,37 @@ router.get('/search/course', async (req: express.Request, res: express.Response)
 });
 
 router.get("/scholarship/:id", async (req: express.Request, res: express.Response): Promise<void> => {
-    const { scholarships : scholarshipsCollection } = getCollections();
+    // const { scholarships : scholarshipsCollection } = getCollections();
+    // let id = req.params.id
+
+    // // OR query বানানো হচ্ছে
+    // const query = { _id: parseObjectId(id) };
+
+    // let result = await scholarshipsCollection.findOne(query)
+
+    // res.send(result)
+       const { scholarships } = getCollections();
     let id = req.params.id
+     console.log(id)
 
     // OR query বানানো হচ্ছে
-    const query = { _id: parseObjectId(id) };
+    // const query = { _id: new ObjectId(id) };
 
-    let result = await scholarshipsCollection.findOne(query)
+     // OR query বানানো হচ্ছে
+            const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+            };
+
+    let result = await scholarships.findOne(query)
+
+    console.log(result)
 
     res.send(result)
+
+
 })
 
 router.get('/search/scholarships', async (req, res) => {
@@ -77,6 +99,8 @@ router.get('/search/scholarships', async (req, res) => {
         res.status(500).send({ success: false, message: 'Failed to fetch scholarships' });
     }
 });
+
+   
 
 router.get('/search/universities', async (req, res) => {
     try {
@@ -90,20 +114,41 @@ router.get('/search/universities', async (req, res) => {
 
 // ================== Get Single Event by ID ==================
 router.get('/event/:id', async (req, res) => {
-    try {
-        const { events : eventsCollection } = getCollections();
-        const id = req.params.id;
-        const event = await eventsCollection.findOne({_id: parseObjectId(req.params.id)});
+    // try {
+    //     const { events : eventsCollection } = getCollections();
+    //     const id = req.params.id;
+    //     const event = await eventsCollection.findOne({_id: parseObjectId(req.params.id)});
 
-        if (!event) {
-            return res.status(404).send({ success: false, message: 'Event not found' });
-        }
+    //     if (!event) {
+    //         return res.status(404).send({ success: false, message: 'Event not found' });
+    //     }
 
-        res.send({ success: true, data: event });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send({ success: false, message: 'Failed to fetch event' });
-    }
+    //     res.send({ success: true, data: event });
+    // } catch (err) {
+    //     console.error(err);
+    //     res.status(500).send({ success: false, message: 'Failed to fetch event' });
+    // }
+
+       const {  events :  events } = getCollections();
+    let id = req.params.id
+     console.log(id)
+
+    // OR query বানানো হচ্ছে
+    // const query = { _id: new ObjectId(id) };
+
+     // OR query বানানো হচ্ছে
+            const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+            };
+
+    let result = await  events.findOne(query)
+
+    console.log(result)
+
+    res.send(result)
 });
 router.get('/search/events', async (req, res) => {
     try {
@@ -141,13 +186,33 @@ router.post('/search/scholarships', async (req, res) => {
 });
 
 router.get("/university/:id", async (req, res) => {
-    const { universities : universitiesCollection } = getCollections();
+    // const { universities : universitiesCollection } = getCollections();
+    // let id = req.params.id
+
+    // // OR query বানানো হচ্ছে
+    // const query = { _id: parseObjectId(id) };
+
+    // let result = await universitiesCollection.findOne(query)
+
+    // res.send(result)
+       const { universities : universityCollection } = getCollections();
     let id = req.params.id
+     console.log(id)
 
     // OR query বানানো হচ্ছে
-    const query = { _id: parseObjectId(id) };
+    // const query = { _id: new ObjectId(id) };
 
-    let result = await universitiesCollection.findOne(query)
+     // OR query বানানো হচ্ছে
+            const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+            };
+
+    let result = await universityCollection.findOne(query)
+
+    console.log(result)
 
     res.send(result)
 })
@@ -206,12 +271,22 @@ router.post('/search/events', async (req, res) => {
 router.get("/course/:id", async (req, res) => {
     const { courses : coursesCollection } = getCollections();
     let id = req.params.id
-    // console.log(id)
+     console.log(id)
 
     // OR query বানানো হচ্ছে
-    const query = { _id: parseObjectId(id) };
+    // const query = { _id: new ObjectId(id) };
+
+     // OR query বানানো হচ্ছে
+            const query = {
+                $or: [
+                    { _id: id }, // string match
+                    ObjectId.isValid(id) ? { _id: new ObjectId(id) } : null // ObjectId match (valid হলে)
+                ].filter(Boolean) // null বাদ দেওয়ার জন্য
+            };
 
     let result = await coursesCollection.findOne(query)
+
+    console.log(result)
 
     res.send(result)
 })
