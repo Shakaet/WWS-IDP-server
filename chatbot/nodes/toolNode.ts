@@ -1,30 +1,57 @@
-import { tools } from "../tools.js";
 import { AgentState } from "../AgentState.js";
+import { ToolMessage } from "@langchain/core/messages";
+import { getAllTools } from "../tools.js";
 
-// interface validatedArgtype{
-//     title: string;
-//     start: string;
-//     end: string;
-//     attendees?: string | undefined;
-//     location?: string | undefined;
-// } 
-
-export async function toolNode(state: AgentState) : Promise<Partial<AgentState>> {
-    if (!state.toolCall) {
-    return {};
+export async function toolNode(state: AgentState): Promise<Partial<AgentState>> {
+  console.log("🔧 Tool node executing...");
+  console.log("Tool calls to execute:", state.toolCall.length);
+  
+  const tools = await getAllTools();
+  const toolMap = new Map(tools.map(t => [t.name, t]));
+  
+  const toolMessages: ToolMessage[] = [];
+  
+  // Execute each tool call
+  for (const toolCall of state.toolCall) {
+    console.log(`Executing tool: ${toolCall.tool} with args:`, toolCall.args);
+    const tool = toolMap.get(toolCall.tool);
+    
+    if (tool) {
+      try {
+        const result: string = await tool.invoke(toolCall.args);
+        const result_json = JSON.parse(result)
+        console.log(`✅ Tool ${toolCall.tool} succeeded with response\n ${result_json.documents}`);
+        
+        toolMessages.push(
+          new ToolMessage({
+            content: String(result_json.documents),
+            tool_call_id: toolCall.tool_call_id,
+          })
+        );
+      } catch (error) {
+        console.error(`❌ Tool ${toolCall.tool} failed:`, error);
+        
+        toolMessages.push(
+          new ToolMessage({
+            content: `Error executing ${toolCall.tool}: ${error instanceof Error ? error.message : String(error)}`,
+            tool_call_id: toolCall.tool_call_id,
+          })
+        );
+      }
+    } else {
+      console.warn(`⚠️ Tool not found: ${toolCall.tool}`);
+      
+      toolMessages.push(
+        new ToolMessage({
+          content: `Tool ${toolCall.tool} not found`,
+          tool_call_id: toolCall.tool_call_id,
+        })
+      );
+    }
   }
-  const { tool, args }: { tool: string; args: any } = state.toolCall;
-
-  const selectedTool = tools[tool];
-  if (!selectedTool) {
-    throw new Error(`Unknown tool: ${tool}`);
-  }
-
-  const validatedArgs = selectedTool.schema.parse(args);
-  const result = await selectedTool.func(validatedArgs);
-
+  
   return {
-    toolCall: null,
-    final_output: result,
+    messages: toolMessages,
+    toolCall: [], // Clear tool calls after execution
   };
 }

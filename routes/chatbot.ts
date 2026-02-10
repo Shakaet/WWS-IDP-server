@@ -3,8 +3,9 @@ import { chatbot } from "../chatbot/graph.js";
 import { AgentState } from "../chatbot/AgentState.js";
 import { v4 as uuidv4 } from "uuid"; // for generating new thread IDs
 import { getCollections } from "../db.js";
-import { BaseMessage } from "@langchain/core/messages";
+import { BaseMessage, HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 const router = express.Router();
+
 
 // 2. Export the function with proper types
 router.post("/connection", async (req: express.Request, res: express.Response) => {
@@ -46,24 +47,31 @@ router.post("/message", async (req: express.Request, res: express.Response) => {
       error: "thread_id is required" 
     });
   }
-  console.log(`Message received in /chatbot/message: ${message} for thread: ${thread_id}`);
+  // console.log(`Message received in /chatbot/message: ${message} for thread: ${thread_id}`);
   const existingThread = await chatHistoryCollection.findOne({ thread_id: thread_id }) as AgentState | null;
 
+  if (!existingThread) {
+    console.log(`No existing thread found for ID: ${thread_id} in /chatbot/message`);
+    return res.status(404).json({
+      status: "invalid_thread",
+      error: "Thread ID not found"
+    });
+  }
+
   const initialState: AgentState = {
-      messages: existingThread?.messages.concat([{ type: "user", content: message } as BaseMessage]) || [{ type: "user", content: message } as BaseMessage],
+      messages: existingThread.messages.concat(new HumanMessage(message)) ,
       final_output: existingThread ? existingThread.final_output : null,
-      toolCall: existingThread ? existingThread.toolCall : null,
+      toolCall: existingThread ? existingThread.toolCall : [],
   };
 
   try {
     const result: AgentState = await Promise.race([
       chatbot.invoke(initialState),
       new Promise<AgentState>((_, reject) =>
-        setTimeout(() => reject(new Error("LLM call timed out")), 30000) // 30s timeout
+        setTimeout(() => reject(new Error("LLM call timed out")), 50000) // 30s timeout
       ),
     ]);
 
-    console.log(`Chatbot processing completed for thread ${thread_id} and final message array is:\n${JSON.stringify(result.messages, null, 2)}`);
     await chatHistoryCollection.updateOne(
       { thread_id: thread_id },
       { $set: { messages: result.messages, final_output: result.final_output, toolCall: result.toolCall } }
@@ -95,9 +103,22 @@ router.get("/chathistory", async (req: express.Request, res: express.Response) =
     });
   }
 
+  const a = existingThread.messages.reduce((acc: string[], e: AIMessage | ToolMessage | HumanMessage) => {
+    if (e.type === "ai") {
+      const aiMessage = e as AIMessage;
+      const calls = aiMessage.tool_calls ?? [];
+      if (calls.length === 0) {
+        acc.push(aiMessage.content as string);
+      }
+    } else if (e.type === "human") {
+      acc.push(e.content as string);
+    }
+    return acc;
+  }, [] as string[]);
+
   return res.status(200).json({ 
     status: "success", 
-    history: existingThread.messages
+    history: a
   });
 });
 
@@ -114,7 +135,7 @@ router.post("/human_feedback", async (req: express.Request, res: express.Respons
     });
   }
 
-  const updatedMessages = [...existingThread.messages, { type: "human_feedback", content: feedback } as BaseMessage];
+  const updatedMessages = [...existingThread.messages, new HumanMessage(`Human Feedback: ${feedback}`)];
   await chatHistoryCollection.updateOne(
     { thread_id: thread_id },
     { $set: { messages: updatedMessages } }

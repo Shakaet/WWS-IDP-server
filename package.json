@@ -20,6 +20,7 @@
     "@langchain/community": "^1.1.0",
     "@langchain/core": "^1.1.6",
     "@langchain/langgraph": "^1.0.7",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

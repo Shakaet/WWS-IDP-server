@@ -13,10 +13,11 @@ export const StateAnnotation = Annotation.Root({
   }),
   toolCall: Annotation<{
     tool: string;
-    args: any;
-  } | null>({
+    args: Record<string, unknown>;
+    tool_call_id: string;
+  } []>({
     value: (_prev, next) => next,
-    default: () => null,
+    default: () => [],
   }),
 });
 
